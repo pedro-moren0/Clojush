@@ -23,8 +23,9 @@
 ; Atom generators
 (def loop-atom-generators
   (concat (list
+            []
             ;;; end ERCs
-            (tag-instruction-erc [:integer :boolean :exec] 1000)
+            (tag-instruction-erc [:integer :boolean :vector_integer :exec] 1000)
             (tagged-instruction-erc 1000)
             ;;; end tag ERCs
             'in1
@@ -32,7 +33,7 @@
             'in3
             ;;; end input instructions
             )
-          (registered-for-stacks [:integer :boolean :exec :print])))
+          (registered-for-stacks [:integer :boolean :vector_integer :exec])))
 
 
 ;; Define test cases
@@ -67,9 +68,7 @@
   "Takes a sequence of inputs and gives IO test cases of the form
    [input output]."
   [inputs]
-  (map #(vector %
-                (apply str (interpose \newline (apply range %))))
-       inputs))
+  (map #(vector % (vec (apply range %))) inputs))
 
 (defn make-for-loop-index-error-function-from-cases
   [train-cases test-cases]
@@ -90,14 +89,14 @@
                                                      (push-item input3 :input)
                                                      (push-item input2 :input)
                                                      (push-item input1 :input)
-                                                     (push-item "" :output)))
-                             result (stack-ref :output 0 final-state)]
+                                                     (push-item [] :output)))
+                             result (top-item :vector_integer final-state)]
                          (when print-outputs
                            (println (format "| Correct output: %s\n| Program output: %s\n" (pr-str correct-output) (pr-str result))))
                          ; Record the behavior
                          (swap! behavior conj result)
                          ; Error is Levenshtein distance of printed strings
-                         (levenshtein-distance correct-output result))))]
+                         (levenshtein-distance (pr-str correct-output) (pr-str result)))))]
         (if (= data-cases :test)
           (assoc individual :test-errors errors)
           (assoc individual :behaviors @behavior :errors errors)

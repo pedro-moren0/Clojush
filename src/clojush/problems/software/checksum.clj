@@ -24,7 +24,6 @@
 ; Atom generators
 (def checksum-atom-generators
   (concat (list
-            "Check sum is "
             \space
             64
             ;;; end constants
@@ -77,7 +76,7 @@
    [input output]."
   [inputs]
   (map #(vector %
-                (format "Check sum is %c"
+                (format "%c"
                         (char (+ (mod (apply + (map int %)) 64)
                                  (int \space)))))
        inputs))
@@ -108,11 +107,7 @@
                            (swap! behavior conj printed-result)
                            ; Error is Levenshtein distance and, if correct format, distance from correct character
                            (vector
-                             (levenshtein-distance correct-output printed-result)
-                             (if (not (empty? printed-result))
-                               (abs (- (int (last correct-output)) (int (last printed-result)))) ;distance from correct last character
-                               1000) ;penalty for wrong format
-                             )))))]
+                            (levenshtein-distance correct-output printed-result))))))]
         (if (= data-cases :test)
           (assoc individual :test-errors errors)
           (assoc individual :behaviors @behavior :errors errors))))))

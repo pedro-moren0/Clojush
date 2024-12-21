@@ -1,3 +1,4 @@
+;; origami
 ;; syllables.clj
 ;; Tom Helmuth, thelmuth@cs.umass.edu
 ;;
@@ -32,7 +33,6 @@
 ; Atom generators
 (def syllables-atom-generators
   (concat (list
-            "The number of syllables is "
             \a
             \e
             \i
@@ -41,8 +41,6 @@
             \y
             "aeiouy"
             ;;; end constants
-            (fn [] (lrand-nth (concat [\newline \tab] (map char (range 32 127))))) ;Visible character ERC
-            (fn [] (syllables-input (lrand-int 21))) ;String ERC
             ;;; end ERCs
             (tag-instruction-erc [:exec :integer :boolean :string :char] 1000)
             (tagged-instruction-erc 1000)
@@ -50,7 +48,7 @@
             'in1
             ;;; end input instructions
             )
-          (registered-for-stacks [:integer :boolean :string :char :exec :print])))
+          (registered-for-stacks [:integer :boolean :string :char :exec])))
 
 
 ;; A list of data domains for the problem. Each domain is a vector containing
@@ -79,7 +77,7 @@
   [inputs]
   (map (fn [in]
          (vector in
-                 (str "The number of syllables is " (count (filter #(some #{%} "aeiouy") in)))))
+                 (count (filter #(some #{%} "aeiouy") in))))
        inputs))
 
 (defn make-syllables-error-function-from-cases
@@ -92,29 +90,24 @@
     ([individual data-cases print-outputs]
       (let [behavior (atom '())
             errors (flatten
-                     (doall
-                       (for [[input correct-output] (case data-cases
-                                                      :train train-cases
-                                                      :test test-cases
-                                                      data-cases)]
-                         (let [final-state (run-push (:program individual)
-                                                     (->> (make-push-state)
-                                                       (push-item input :input)
-                                                       (push-item "" :output)))
-                               printed-result (stack-ref :output 0 final-state)]
-                           (when print-outputs
-                             (println (format "\n| Correct output: %s\n| Program output: %s" (pr-str correct-output) (pr-str printed-result))))
+                    (doall
+                     (for [[input correct-output] (case data-cases
+                                                    :train train-cases
+                                                    :test test-cases
+                                                    data-cases)]
+                       (let [final-state (run-push (:program individual)
+                                                   (->> (make-push-state)
+                                                        (push-item input :input)))
+                             result (top-item :integer final-state)]
+                         (when print-outputs
+                           (println (format "\n| Correct output: %s\n| Program output: %s" (pr-str correct-output) (pr-str result))))
                            ; Record the behavior
-                           (swap! behavior conj printed-result)
+                         (swap! behavior conj result)
                            ; Error is Levenshtein distance and, if ends in an integer, distance from correct integer
-                           (vector
-                             (levenshtein-distance correct-output printed-result)
-                             (if-let [num-result (try (Integer/parseInt (last (string/split printed-result #"\s+")))
-                                                   (catch Exception e nil))]
-                               (abs (- (Integer/parseInt (last (string/split correct-output #"\s+")))
-                                       num-result)) ;distance from correct integer
-                               1000)
-                             )))))]
+                         (vector
+                          (if (number? result)
+                            (abs (- correct-output result))
+                            1000000))))))] ;; penalty for no return value
         (if (= data-cases :test)
           (assoc individual :test-errors errors)
           (assoc individual :behaviors @behavior :errors errors))))))

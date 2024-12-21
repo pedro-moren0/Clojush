@@ -117,10 +117,11 @@
     (flatten
      (map (fn [[printed-result int-result] [correct-printed-output correct-int]]
             (vector
-             (levenshtein-distance correct-printed-output printed-result)
-             (if (number? int-result)
-               (abs (- int-result correct-int)) ;distance from correct integer
-               1000)                  ;penalty for no return value
+             (+
+              (levenshtein-distance correct-printed-output printed-result)
+              (if (number? int-result)
+                (abs (- int-result correct-int)) ;distance from correct integer
+                1000))                  ;penalty for no return value
              ))
           behavior-pairs
           output-pairs))))

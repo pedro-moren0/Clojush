@@ -19,15 +19,16 @@
 ; Atom generators
 (def string-lengths-atom-generators
   (concat (list
-            (fn [] (- (lrand-int 201) 100)) ; Integer ERC in [-100,100]
+           []
+           (fn [] (- (lrand-int 201) 100)) ; Integer ERC in [-100,100]
             ;;; end ERCs
-            (tag-instruction-erc [:string :vector_string :integer :boolean :exec] 1000)
-            (tagged-instruction-erc 1000)
+           (tag-instruction-erc [:string :vector_string :integer :vector_integer :boolean :exec] 1000)
+           (tagged-instruction-erc 1000)
             ;;; end tag ERCs
-            'in1
+           'in1
             ;;; end input instructions
-            )
-          (registered-for-stacks [:string :vector_string :integer :boolean :exec :print])))
+           )
+          (registered-for-stacks [:string :vector_string :integer :vector_integer :boolean :exec])))
 
 ;; Define test cases
 (defn string-generator
@@ -72,7 +73,7 @@
    [input output]."
   [inputs]
   (map #(vector %
-                (apply str (interpose \newline (reverse (map count %)))))
+                (vec (reverse (map count %))))
        inputs))
 
 (defn make-string-lengths-backwards-error-function-from-cases
@@ -92,14 +93,14 @@
                        (let [final-state (run-push (:program individual)
                                                    (->> (make-push-state)
                                                      (push-item input1 :input)
-                                                     (push-item "" :output)))
-                             result (stack-ref :output 0 final-state)]
+                                                     (push-item [] :output)))
+                             result (top-item :vector_integer final-state)]
                          (when print-outputs
                            (println (format "| Correct output: %s\n| Program output: %s\n" (pr-str correct-output) (pr-str result))))
                          ; Record the behavior
                          (swap! behavior conj result)
                          ; Error is Levenshtein distance
-                         (levenshtein-distance correct-output result))))]
+                         (levenshtein-distance (pr-str correct-output) (pr-str result)))))]
         (if (= data-cases :test)
           (assoc individual :test-errors errors)
           (assoc individual :behaviors @behavior :errors errors))))))

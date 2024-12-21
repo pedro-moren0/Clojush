@@ -22,17 +22,17 @@
 ; Atom generators
 (def digits-atom-generators
   (concat (list
-            \newline
+            []
             ;;; end constants
-            (fn [] (- (lrand-int 21) 10))
+            (fn [] (- (lrand-int 19) 9)) ; [-9, 9]
             ;;; end ERCs
-            (tag-instruction-erc [:integer :boolean :string :char :exec] 1000)
+            (tag-instruction-erc [:integer :boolean :vector_integer :exec] 1000)
             (tagged-instruction-erc 1000)
             ;;; end tag ERCs
             'in1
             ;;; end input instructions
             )
-          (registered-for-stacks [:integer :boolean :string :char :exec :print])))
+          (registered-for-stacks [:integer :boolean :vector_integer :exec])))
 
 (defn my-rand-long
   "replaces rand-int when need longs"
@@ -62,9 +62,12 @@
   "Takes a sequence of inputs and gives IO test cases of the form
    [input output]."
   [inputs]
-  (map (fn [in] (vector in
-                        (apply str ((if (< in 0) #(concat (butlast %) [\- (last %)]) identity)
-                                     (interpose \newline (reverse (str (abs in))))))))
+  (map (fn [in] (vector in (vec (reduce
+                                 (fn [acc i]
+                                   (let [out (* (if (and (empty? acc) (< in 0)) -1 1) (read-string (str i)))] ; if in is negative and i is the first number, multiply by -1
+                                     (cons out acc)))
+                                 (list)
+                                 (str (abs in))))))
        inputs))
 
 (defn make-digits-error-function-from-cases
@@ -84,14 +87,14 @@
                        (let [final-state (run-push (:program individual)
                                                    (->> (make-push-state)
                                                         (push-item input1 :input)
-                                                        (push-item "" :output)))
-                             result (stack-ref :output 0 final-state)]
+                                                        (push-item [] :output)))
+                             result (top-item :vector_integer final-state)]
                          (when print-outputs
                            (println (format "| Correct output: %s\n| Program output: %s\n" (pr-str correct-output) (pr-str result))))
                          ; Record the behavior
                          (swap! behavior conj result)
                          ; Error is Levenshtein distance of printed strings
-                         (levenshtein-distance correct-output result))))]
+                         (levenshtein-distance (pr-str correct-output) (pr-str result)))))]
         (if (= data-cases :test)
           (assoc individual :test-errors errors)
           (assoc individual :behaviors @behavior :errors errors))))))

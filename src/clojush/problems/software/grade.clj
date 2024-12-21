@@ -24,8 +24,6 @@
 ; Atom generators
 (def grade-atom-generators
   (concat (list
-            "Student has a "
-            " grade."
             "A"
             "B"
             "C"
@@ -109,15 +107,13 @@
    [[input1 input2 input3 input4 input5] output]."
   [inputs]
   (map #(vector %
-                (str "Student has a "
-                     (let [score (last %)]
+                (str (let [score (last %)]
                        (cond
                          (>= score (first %)) \A
                          (>= score (second %)) \B
                          (>= score (nth % 2)) \C
                          (>= score (nth % 3)) \D
-                         :else \F))
-                     " grade."))
+                         :else \F))))
        inputs))
 
 (defn make-grade-error-function-from-cases
@@ -150,13 +146,7 @@
                            (swap! behavior conj printed-result)
                            ; Error is Levenshtein distance and, if correct format, distance from correct letter grade character
                            (vector
-                             (levenshtein-distance correct-output printed-result)
-                             (let [printed-letter (second (re-find #"^Student has a (.) grade.$" printed-result))
-                                   correct-letter (second (re-find #"^Student has a (.) grade.$" correct-output))]
-                               (if printed-letter
-                                 (abs (- (int (first correct-letter))
-                                         (int (first printed-letter)))) ;distance from correct character
-                                 1000))
+                             (levenshtein-distance (pr-str correct-output) (pr-str printed-result))
                              )))))]
         (if (= data-cases :test)
           (assoc individual :test-errors errors)

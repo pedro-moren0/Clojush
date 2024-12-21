@@ -18,14 +18,15 @@
 ; Atom generators
 (def even-squares-atom-generators
   (concat (list
+            []
             ;;; end ERCs
-            (tag-instruction-erc [:integer :boolean :exec] 1000)
+            (tag-instruction-erc [:integer :boolean :vector_integer :exec] 1000)
             (tagged-instruction-erc 1000)
             ;;; end tag ERCs
             'in1
             ;;; end input instructions
             )
-          (registered-for-stacks [:integer :boolean :exec :print])))
+          (registered-for-stacks [:integer :boolean :vector_integer :exec])))
 
 
 ;; A list of data domains for the problem. Each domain is a vector containing
@@ -48,12 +49,10 @@
    [input output]."
   [inputs]
   (map (fn [in]
-         (let [nums (rest (take-while #(< % in)
-                                                 (map #(* 4 % %)
-                                                      (range))))]
-               (vector in
-                       (vector (apply str (interpose \newline nums))
-                               nums))))
+         (let [nums (vec (rest (take-while #(< % in)
+                                      (map #(* 4 % %)
+                                           (range)))))]
+               (vector in nums)))
        inputs))
 
 (defn make-even-squares-error-function-from-cases
@@ -67,45 +66,22 @@
       (let [behavior (atom '())
             errors (flatten
                      (doall
-                       (for [[input1 [correct-output correct-integers]] (case data-cases
+                       (for [[input1 correct-integers] (case data-cases
                                                                           :train train-cases
                                                                           :test test-cases
                                                                           data-cases)]
                          (let [final-state (run-push (:program individual)
                                                      (->> (make-push-state)
                                                        (push-item input1 :input)
-                                                       (push-item "" :output)))
-                               result (stack-ref :output 0 final-state)]
+                                                       (push-item [] :output)))
+                               result (top-item :vector_integer final-state)]
                            (when print-outputs
-                             (println (format "| Correct output: %s\n| Program output: %s\n" (pr-str correct-output) (pr-str result))))
+                             (println (format "| Correct output: %s\n| Program output: %s\n" (pr-str correct-integers) (pr-str result))))
                            ; Record the behavior
                            (swap! behavior conj result)
-                           (let [correct-number-lines (count correct-integers)
-                                 result-lines (if (= result "")
-                                                []
-                                                (string/split-lines result))
-                                 int-parse-strings (filter #(re-matches #"-?\d+" %) result-lines)
-                                 lines-with-integer-parseable-strings (count int-parse-strings)
-                                 lines-without-integer-parseable-strings (- (count result-lines) lines-with-integer-parseable-strings)]
-                             (vector
-                               ; Error 1: Levenshtein distance of printed strings
-                               (levenshtein-distance correct-output result)
-                               ; Error 2: Difference in number of lines with integer-parseable strings. Also, each line without an integer-parseable string contributes 1 error
-                               (+ (abs (- correct-number-lines lines-with-integer-parseable-strings))
-                                  lines-without-integer-parseable-strings)
-                               ; Error 3: For each line in the result with a parseable integer, find the integer error compared to correct integer. Sum these.
-                               (let [correct-result-int-pairs (map vector
-                                                                   correct-integers
-                                                                   (concat (map (fn [int-str]
-                                                                                  (try (Integer/parseInt int-str)
-                                                                                    (catch Exception e :no-result)))
-                                                                                int-parse-strings)
-                                                                           (repeat :no-result)))]
-                                 (apply +' (map (fn [[cor-int res-int]]
-                                                  (if (not (number? res-int))
-                                                    100 ; penalty for not enough lines with parseable integers
-                                                    (abs (- cor-int res-int))))
-                                                correct-result-int-pairs)))))))))]
+                           (vector
+                            ; Error 1: Levenshtein distance of printed strings
+                            (levenshtein-distance (pr-str correct-integers) (pr-str result)))))))]
         (if (= data-cases :test)
           (assoc individual :test-errors errors)
           (assoc individual :behaviors @behavior :errors errors))))))

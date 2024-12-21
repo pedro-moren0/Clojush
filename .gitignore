@@ -46,3 +46,4 @@ scratch.clj
 .calva/
 .clj-kondo/
 .lsp/
+*.out
