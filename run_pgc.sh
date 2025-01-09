@@ -27,6 +27,7 @@ else
 	do
 		for i in {1..100};
 		do
+			echo "Running $b $i/100"
 			out_file="$b-$i.out"
 			lein run clojush.problems.software."$b" > "$output_folder/$out_file"
 		done
