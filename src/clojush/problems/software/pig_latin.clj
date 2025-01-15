@@ -15,20 +15,23 @@
         [clojush pushstate interpreter random util globals]
         clojush.instructions.tag
         clojure.math.numeric-tower)
-    (:require [clojure.string :as string]))
+  (:require [clojure.string :as string]))
+
+(defn split-at-blank
+  "Takes a sentence and return a vector of strings, split at blank space."
+  [sentence]
+  (vec (remove empty? (string/split sentence #" "))))
 
 ;; Define test cases
 (defn pig-latin-input
   "Makes a Pig Latin input of length len."
   [len]
-  (apply str (interpose \space
-                        (remove empty? (string/split (apply str
-                                                            (repeatedly len
-                                                                        (fn []
-                                                                          (if (< (lrand) 0.2)
-                                                                            \space
-                                                                            (lrand-nth (map char (range 97 123)))))))
-                                                     #" ")))))
+  (split-at-blank (apply str
+                         (repeatedly len
+                                     (fn []
+                                       (if (< (lrand) 0.2)
+                                         \space
+                                         (lrand-nth (map char (range 97 123)))))))))
 
 ; Atom generators
 (def pig-latin-atom-generators
@@ -37,17 +40,18 @@
             \space
             \a \e \i \o \u
             "aeiou"
+            []
             ;;; end constants
             (fn [] (lrand-nth (concat [\newline \tab] (map char (range 32 127))))) ;Visible character ERC
             (fn [] (pig-latin-input (lrand-int 21))) ;String ERC
             ;;; end ERCs
-            (tag-instruction-erc [:string :char :integer :boolean :exec] 1000)
+            (tag-instruction-erc [:string :vector_string :char :integer :boolean :exec] 1000)
             (tagged-instruction-erc 1000)
             ;;; end tag ERCs
             'in1
             ;;; end input instructions
             )
-          (registered-for-stacks [:string :char :integer :boolean :exec :print])))
+          (registered-for-stacks [:string :vector_string :char :integer :boolean :exec])))
 
 
 ;; A list of data domains for the problem. Each domain is a vector containing
@@ -56,19 +60,21 @@
 ;; inputs is either a list or a function that, when called, will create a
 ;; random element of the set.
 (def pig-latin-data-domains
-  [[(list "", "a", "b", "c", "d", "e", "i", "m", "o", "u", "y", "z"
-          "hello", "there", "world", "eat", "apple", "yellow", "orange", "umbrella", "ouch", "in",
-          "hello there world"
-          "out at the plate"
-          "nap time on planets"
-          "supercalifragilistic"
-          "expialidocious"
-          (apply str (repeat 50 \u))
-          (apply str (repeat 50 \s))
-          (apply str (take 49 (cycle (list \w \space))))
-          (apply str (take 49 (cycle (list \e \space))))
-          (apply str (take 50 (cycle (list \h \a \space))))
-          (apply str (take 49 (cycle (list \x \space \y \space))))) 33 0] ;; "Special" inputs covering some base cases
+  [[(concat (map split-at-blank
+                 (list "", "a", "b", "c", "d", "e", "i", "m", "o", "u", "y", "z"
+                       "hello", "there", "world", "eat", "apple", "yellow", "orange", "umbrella", "ouch", "in",
+                       "hello there world"
+                       "out at the plate"
+                       "nap time on planets"
+                       "supercalifragilistic"
+                       "expialidocious"))
+            (map split-at-blank
+                 (list (apply str (repeat 50 \u))
+                       (apply str (repeat 50 \s))
+                       (apply str (take 49 (cycle (list \w \space))))
+                       (apply str (take 49 (cycle (list \e \space))))
+                       (apply str (take 50 (cycle (list \h \a \space))))
+                       (apply str (take 49 (cycle (list \x \space \y \space))))))) 33 0] ;; "Special" inputs covering some base cases
    [(fn [] (pig-latin-input (+ 3 (lrand-int 48)))) 167 1000]
    ])
 
@@ -82,42 +88,41 @@
   [inputs]
   (map (fn [in]
          (vector in
-                 (apply str (interpose \space
-                                       (map #(if (some #{(first %)} "aeiou")
-                                               (str % "ay")
-                                               (str (apply str (rest %)) (first %) "ay"))
-                                           (remove empty? (string/split in #" ")))))))
+                 (vec (map #(if (some #{(first %)} "aeiou")
+                              (str % "ay")
+                              (str (apply str (rest %)) (first %) "ay"))
+                           in))))
        inputs))
 
 (defn make-pig-latin-error-function-from-cases
   [train-cases test-cases]
   (fn the-actual-pig-latin-error-function
     ([individual]
-      (the-actual-pig-latin-error-function individual :train))
+     (the-actual-pig-latin-error-function individual :train))
     ([individual data-cases] ;; data-cases should be :train or :test
      (the-actual-pig-latin-error-function individual data-cases false))
     ([individual data-cases print-outputs]
-      (let [behavior (atom '())
-            errors (doall
-                     (for [[input correct-output] (case data-cases
-                                                    :train train-cases
-                                                    :test test-cases
-                                                    data-cases)]
-                       (let [final-state (run-push (:program individual)
-                                                   (->> (make-push-state)
-                                                     (push-item input :input)
-                                                     (push-item "" :output)))
-                             result (stack-ref :output 0 final-state)]
-                         (when print-outputs
-                           (println (format "\n| Correct output: %s\n| Program output: %s" (pr-str correct-output) (pr-str result))))
-                         ; Record the behavior
-                         (swap! behavior conj result)
-                         ; Error is Levenshtein distance for printed string
-                         (levenshtein-distance correct-output result)
-                         )))]
-        (if (= data-cases :test)
-          (assoc individual :test-errors errors)
-          (assoc individual :behaviors @behavior :errors errors))))))
+     (let [behavior (atom '())
+           errors (doall
+                    (for [[input correct-output] (case data-cases
+                                                   :train train-cases
+                                                   :test test-cases
+                                                   data-cases)]
+                      (let [final-state (run-push (:program individual)
+                                                  (->> (make-push-state)
+                                                       (push-item input :input)
+                                                       (push-item [] :output)))
+                            result (top-item :vector_string final-state)]
+                        (when print-outputs
+                          (println (format "\n| Correct output: %s\n| Program output: %s" (pr-str correct-output) (pr-str result))))
+                        ; Record the behavior
+                        (swap! behavior conj result)
+                        ; Error is Levenshtein distance for printed string
+                        (levenshtein-distance (pr-str correct-output) (pr-str result))
+                        )))]
+       (if (= data-cases :test)
+         (assoc individual :test-errors errors)
+         (assoc individual :behaviors @behavior :errors errors))))))
 
 (defn get-pig-latin-train-and-test
   "Returns the train and test cases."
