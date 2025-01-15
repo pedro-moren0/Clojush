@@ -25,7 +25,8 @@
             ;[cider/cider-nrepl "0.21.1"]
             [lein-cloverage "1.0.13"]
             [net.totakke/lein-libra "0.1.2"]]
-  :profiles {:text {:plugins [[venantius/ultra "0.5.4"]]}}
+  :profiles {:text {:plugins [[venantius/ultra "0.5.4"]]}
+             :beluga {:jvm-opts ["-Xms250g" "-Xmx750g" "-XX:+UseParallelGC"]}}
   :codox {:source-uri "http://github.com/lspector/Clojush/blob/master/{filepath}#L{line}"
           :namespaces [#"^(?!clojush\.problems)"]
           :output-path "doc"
@@ -50,5 +51,5 @@
   ;; faster without defaults
   ;; https://plot.ly/~SaulShanabrook/11/?share_key=pNTJGA4S58MA29Uqskbr6j
   ;; https://push-language.hampshire.edu/t/improving-profiling-clojush-performance-results/904/13?u=saulshanabrook
-  :jvm-opts ^:replace []
+  :jvm-opts ^:displace []
   :main clojush.core)
