@@ -6,13 +6,13 @@ bms=(
 "even-squares"
 "for-loop-index"
 "grade"
-# "pig-latin"
+"pig-latin"
 "replace-space-with-newline"
 # "scrabble-score"
-# "string-differences"
+"string-differences"
 "string-lengths-backwards"
 "syllables"
-# "word-stats"
+"word-stats"
 )
 
 if [ $# != 1 ]; then
@@ -27,9 +27,13 @@ else
 	do
 		for i in {1..100};
 		do
+			# pula os benchmarks já rodados
+			if [ $b == "checksum" ] && [ $i -le 15 ]; then
+				continue
+			fi
 			echo "Running $b $i/100"
 			out_file="$b-$i.out"
-			lein run clojush.problems.software."$b" > "$output_folder/$out_file"
+			lein with-profile beluga run clojush.problems.software."$b" > "$output_folder/$out_file"
 		done
 	done
 fi
