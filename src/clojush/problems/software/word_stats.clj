@@ -93,10 +93,6 @@
   (concat (list
             \. \? \! \space \tab \newline
             []
-            "words of length "
-            ": "
-            "number of sentences: "
-            "average sentence length: "
             ;;; end constants
             (fn [] (- (lrand-int 201) 100)) ;Integer ERC
             ;;; end ERCs
@@ -109,7 +105,7 @@
             'file_begin
             ;;; end input instructions
             )
-          (registered-for-stacks [:string :vector_string :char :integer :vector_integer :float :vector_float :boolean :exec :print])))
+          (registered-for-stacks [:string :vector_string :char :integer :vector_integer :float :vector_float :boolean :exec])))
 
 
 ;; Define test cases
@@ -182,10 +178,8 @@
                word-lengths (map count words)
                num-sentences (count (filter #(some #{%} ".?!") in))]
            (vector in
-                   (vector (str (apply str (for [n (range 1 (inc (apply max word-lengths)))]
-                                             (format "words of length %d: %d\n" n (count (filter #(= % n) word-lengths)))))
-                                (format "number of sentences: %d\n" num-sentences)
-                                (format "average sentence length: %s" (pr-str (round-to-n-decimal-places (* 1.0 (/ (count words) num-sentences)) 10))))
+                   (vector (vec (map (fn [n] (count (filter #(= % n) word-lengths)))
+                                     (range 1 (inc (apply max word-lengths)))))
                            num-sentences
                            (float (/ (count words) num-sentences))))))
        inputs))
@@ -208,28 +202,27 @@
                          (let [final-state (run-push (:program individual)
                                                      (->> (make-push-state)
                                                        (push-item input :input)
-                                                       (push-item input :input)
-                                                       (push-item "" :output)))
-                               result (stack-ref :output 0 final-state)]
+                                                       (push-item input :input)))
+                               result (top-item :vector_integer final-state)
+                               result-sentences (top-item :integer final-state)
+                               result-sentences-average (top-item :float final-state)]
                            (when print-outputs
-                             (println (format "\n| Correct output: %s\n| Program output: %s" (pr-str correct-output) (pr-str result))))
+                             (println (format "\n| Correct output: %s\n| Program output: %s" (pr-str correct-output) (pr-str result)))
+                             (println (format "| Correct number of sentences: %s| Program number: %s" (pr-str sentences) (pr-str result-sentences)))
+                             (println (format "| Correct average words/sentece: %s| Program average: %s" (pr-str words-per-sentence) (pr-str result-sentences-average))))
                            ; Record the behavior
                            (swap! behavior conj result)
                            ; Errors:
-                           ;  1. Levenshtein distance of outputs
-                           ;  2. If contains a line of the form #"number of sentences: (-?\d+)", then integer distance from correct output; otherwise penalty
-                           ;  3. If contains a line of the form #"average sentence length: (-?\d+.\d+)", then float distance from correct output, rounded to 4 places; otherwise penalty
+                           ;  1. Levenshtein distance of outputs + abs dist of sentences + abs dist of words average
                            (vector
-                             (levenshtein-distance correct-output result)
-                             (if-let [result-n (try (Integer/parseInt (second (re-find #"number of sentences: (-?\d+)" result)))
-                                                 (catch Exception e nil))]
-                               (abs (- result-n sentences))
-                               10000) ;Penalty
-                             (if-let [result-f (try (Float/parseFloat (second (re-find #"average sentence length: (-?\d+\.\d+)" result)))
-                                                 (catch Exception e nil))]
-                               (round-to-n-decimal-places (abs (- result-f words-per-sentence)) 4)
-                               10000.0) ;Penalty
-                             )))))]
+                             (+ (levenshtein-distance (pr-str correct-output) (pr-str result))
+                                (if (number? result-sentences)
+                                  (abs (- result-sentences sentences))
+                                  1000000) ;Penalty
+                                (if (number? result-sentences-average)
+                                  (abs (- result-sentences-average words-per-sentence))
+                                  1000000.0) ;Penalty
+                                ))))))]
         (if (= data-cases :test)
           (assoc individual :test-errors errors)
           (assoc individual :behaviors @behavior :errors errors))))))

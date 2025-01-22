@@ -37,14 +37,14 @@
             ;;; end constants
             (fn [] (- (lrand-int 21) 10)) ;; Integer ERC [-10,10]
             ;;; end ERCs
-            (tag-instruction-erc [:integer :boolean :string :char :exec] 1000)
+            (tag-instruction-erc [:integer :vector_integer :boolean :string :char :vector_string :exec] 1000)
             (tagged-instruction-erc 1000)
             ;;; end tag ERCs
             'in1
             'in2
             ;;; end input instructions
             )
-          (registered-for-stacks [:integer :boolean :string :char :exec :print])))
+          (registered-for-stacks [:integer :vector_integer :boolean :string :char :vector_string :exec])))
 
 
 ;; Define test cases
@@ -111,20 +111,42 @@
 ;;Can make test data like this:
 ;(test-and-train-data-from-domains string-differences-data-domains)
 
+(defn string-differences-pair-list
+  "Takes two strings, in1 and in2, and returns a list of pairs
+   of the form [true idx char1 char2], where true
+   is the constant true, idx is the index in the
+   strings such that there are different chars 
+   and char1 is the char at index idx in in1
+   and char2 is the char at index idx in in2"
+  [in1 in2]
+  (filter first
+          (map #(vector (not= %1 %2) %3 %1 %2)
+               in1
+               in2
+               (range))))
+
+(defn string-differences-string-list
+  "Takes pair list of the form [true idx char1 char2]
+   and return a list of strings of the form [\"char1char2\"]"
+  [pairs]
+  (vec (map #(apply str (rest (rest %))) pairs)))
+
+(defn string-differences-index-list
+  "Takes a pair list of the form [true idx char1 char2]
+   and returns a list of the indexes"
+  [pairs]
+  (vec (map #(second %) pairs)))
+
 ; Helper function for error function
 (defn string-differences-test-cases
   "Takes a sequence of inputs and gives IO test cases of the form
    [input output]."
   [inputs]
   (map (fn [[in1 in2]]
-         (vector [in1 in2]
-                 (apply str
-                        (interpose \newline
-                                   (map #(apply str (interpose \space (rest %)))
-                                       (filter first (map #(vector (not= %1 %2) %3 %1 %2)
-                                                          in1
-                                                          in2
-                                                          (range))))))))
+         (let [pairs (string-differences-pair-list in1 in2)]
+           (vector [in1 in2]
+                   [(string-differences-string-list pairs)
+                    (string-differences-index-list pairs)])))
        inputs))
 
 (defn make-string-differences-error-function-from-cases
@@ -137,7 +159,7 @@
     ([individual data-cases print-outputs]
       (let [behavior (atom '())
             errors (flatten (doall
-                              (for [[[input1 input2] correct-output] (case data-cases
+                              (for [[[input1 input2] [correct-output correct-idxs]] (case data-cases
                                                                        :train train-cases
                                                                        :test test-cases
                                                                        data-cases)]
@@ -145,22 +167,22 @@
                                                             (->> (make-push-state)
                                                               (push-item input2 :input)
                                                               (push-item input1 :input)
-                                                              (push-item "" :output)))
-                                      result (stack-ref :output 0 final-state)]
+                                                              (push-item [] :vector_integer)
+                                                              (push-item [] :vector_string)))
+                                      idx-result (top-item :vector_integer final-state)
+                                      result (top-item :vector_string final-state)]
                                   (when print-outputs
                                     (println (format "INPUT1: %s" (pr-str input1)))
                                     (println (format "INPUT2: %s" (pr-str input2)))
-                                    (println (format "| Correct output: %s\n| Program output: %s\n" (pr-str correct-output) (pr-str result))))
+                                    (println (format "| Correct output: %s\n| Program output: %s\n" (pr-str correct-output) (pr-str result)))
+                                    (println (format "| Correct index %s\n| Program index %s\n" (pr-str correct-idxs) (pr-str idx-result))))
                                   ; Record the behavior
                                   (swap! behavior conj result)
                                   ; Error is:
                                   ;   1. Levenshtein distance of printed strings
-                                  ;   2. Difference in number of lines using the correct format
-                                  (vector
-                                    (levenshtein-distance correct-output result)
-                                    (abs (- (count (re-seq #"(?m)^\d+ \S \S$" correct-output))
-                                            (count (re-seq #"(?m)^\d+ \S \S$" result))))
-                                    )))))] ;;NOTE: SEE NOTE IN INTRO
+                                  ;   2. Levenshtein distance of indexes
+                                  (+ (levenshtein-distance (pr-str correct-output) (pr-str result))
+                                     (levenshtein-distance (pr-str correct-idxs) (pr-str idx-result)))))))] ;;NOTE: SEE NOTE IN INTRO
         (if (= data-cases :test)
           (assoc individual :test-errors errors)
           (assoc individual :behaviors @behavior :errors errors))))))
