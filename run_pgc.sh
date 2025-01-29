@@ -28,12 +28,12 @@ else
 		for i in {1..100};
 		do
 			# pula os benchmarks já rodados
-			if [ $b == "checksum" ] && [ $i -le 15 ]; then
+			if [ $b == "checksum" ] && [ $i -le 26 ]; then
 				continue
 			fi
 			echo "Running $b $i/100"
 			out_file="$b-$i.out"
-			lein with-profile beluga run clojush.problems.software."$b" > "$output_folder/$out_file"
+			lein with-profile beluga run clojush.problems.software."$b" :parent-selection :downsampled-lexicase > "$output_folder/$out_file"
 		done
 	done
 fi
