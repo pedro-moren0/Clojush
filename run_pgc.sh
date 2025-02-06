@@ -28,7 +28,7 @@ else
 		for i in {1..100};
 		do
 			# pula os benchmarks já rodados
-			if [ $b == "checksum" ] && [ $i -le 26 ]; then
+			if [ $b == "checksum" ] && [ $i -le 34 ]; then
 				continue
 			fi
 			echo "Running $b $i/100"
