@@ -25,7 +25,7 @@ else
 
 	for b in ${bms[@]};
 	do
-		for i in {1..100};
+		for i in {1..10};
 		do
 			# pula os benchmarks já rodados
 			# if [ $b == "checksum" ] && [ $i -le 34 ]; then
