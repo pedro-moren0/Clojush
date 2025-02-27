@@ -1,7 +1,7 @@
 #!/bin/bash
 
 bms=(
-"checksum"
+# "checksum"
 "digits"
 "even-squares"
 "for-loop-index"
@@ -28,12 +28,12 @@ else
 		for i in {1..100};
 		do
 			# pula os benchmarks já rodados
-			if [ $b == "checksum" ] && [ $i -le 34 ]; then
-				continue
-			fi
-			echo "Running $b $i/100"
+			# if [ $b == "checksum" ] && [ $i -le 34 ]; then
+			# 	continue
+			# fi
+			echo "Running $b $i/10"
 			out_file="$b-$i.out"
-			lein with-profile beluga run clojush.problems.software."$b" :parent-selection :downsampled-lexicase > "$output_folder/$out_file"
+			lein with-profile beluga run clojush.problems.software."$b" > "$output_folder/$out_file"
 		done
 	done
 fi

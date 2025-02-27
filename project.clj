@@ -26,8 +26,8 @@
             [lein-cloverage "1.0.13"]
             [net.totakke/lein-libra "0.1.2"]]
   :profiles {:text {:plugins [[venantius/ultra "0.5.4"]]}
-             :pc {:jvm-opts ["-Xms10g" "-Xmx11g" "-XX:+UseParallelGC"]}
-             :beluga {:jvm-opts ["-Xms250g" "-Xmx750g" "-XX:+UnlockExperimentalVMOptions" "-XX:+UseZGC"]}}
+             :pc {:jvm-opts ["-Xms10g" "-Xmx10g" "-XX:+UseParallelGC"]}
+             :beluga {:jvm-opts ["-Xms250g" "-Xmx250g" "-XX:+UseParallelGC"]}}
   :codox {:source-uri "http://github.com/lspector/Clojush/blob/master/{filepath}#L{line}"
           :namespaces [#"^(?!clojush\.problems)"]
           :output-path "doc"
