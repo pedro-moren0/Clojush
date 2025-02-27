@@ -32,6 +32,7 @@
 ; Atom generators
 (def string-differences-atom-generators
   (concat (list
+            []
             \space
             \newline
             ;;; end constants
@@ -166,9 +167,7 @@
                                 (let [final-state (run-push (:program individual)
                                                             (->> (make-push-state)
                                                               (push-item input2 :input)
-                                                              (push-item input1 :input)
-                                                              (push-item [] :vector_integer)
-                                                              (push-item [] :vector_string)))
+                                                              (push-item input1 :input)))
                                       idx-result (top-item :vector_integer final-state)
                                       result (top-item :vector_string final-state)]
                                   (when print-outputs
@@ -181,8 +180,12 @@
                                   ; Error is:
                                   ;   1. Levenshtein distance of printed strings
                                   ;   2. Levenshtein distance of indexes
-                                  (+ (levenshtein-distance (pr-str correct-output) (pr-str result))
-                                     (levenshtein-distance (pr-str correct-idxs) (pr-str idx-result)))))))] ;;NOTE: SEE NOTE IN INTRO
+                                  (+ (if (vector? result)
+                                       (levenshtein-distance (pr-str correct-output) (pr-str result))
+                                       1000000)
+                                     (if (vector? idx-result)
+                                       (levenshtein-distance (pr-str correct-idxs) (pr-str idx-result))
+                                       1000000))))))] ;;NOTE: SEE NOTE IN INTRO
         (if (= data-cases :test)
           (assoc individual :test-errors errors)
           (assoc individual :behaviors @behavior :errors errors))))))

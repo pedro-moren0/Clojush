@@ -36,7 +36,7 @@
             'in1
             ;;; end input instructions
             )
-          (registered-for-stacks [:integer :boolean :string :char :exec :print])))
+          (registered-for-stacks [:exec :integer :boolean :string :char])))
 
 
 ;; Define test cases
@@ -76,9 +76,8 @@
    [input output]."
   [inputs]
   (map #(vector %
-                (format "%c"
-                        (char (+ (mod (apply + (map int %)) 64)
-                                 (int \space)))))
+                (char (+ (mod (apply + (map int %)) 64)
+                                 (int \space))))
        inputs))
 
 (defn make-checksum-error-function-from-cases
@@ -98,16 +97,16 @@
                                                       data-cases)]
                          (let [final-state (run-push (:program individual)
                                                      (->> (make-push-state)
-                                                       (push-item input :input)
-                                                       (push-item "" :output)))
-                               printed-result (stack-ref :output 0 final-state)]
+                                                       (push-item input :input)))
+                               result (top-item :char final-state)]
                            (when print-outputs
-                             (println (format "Correct output: %-19s | Program output: %-19s" correct-output printed-result)))
+                             (println (format "Correct output: %-19s | Program output: %-19s" (pr-str correct-output) (pr-str result))))
                            ; Record the behavior
-                           (swap! behavior conj printed-result)
-                           ; Error is Levenshtein distance and, if correct format, distance from correct character
-                           (vector
-                            (levenshtein-distance correct-output printed-result))))))]
+                           (swap! behavior conj result)
+                           ; Error is char error (per the origami reference)
+                           (if (char? result)
+                              (abs (- (int correct-output) (int result)))
+                              1000000)))))] ;; no char penalty
         (if (= data-cases :test)
           (assoc individual :test-errors errors)
           (assoc individual :behaviors @behavior :errors errors))))))

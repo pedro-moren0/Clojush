@@ -43,7 +43,7 @@
             'in1
             ;;; end input instructions
             )
-          (registered-for-stacks [:integer :boolean :string :char :exec :print])))
+          (registered-for-stacks [:exec :integer :boolean :string :char])))
 
 
 ;; A list of data domains for the problem. Each domain is a vector containing
@@ -102,11 +102,10 @@
     (for [[input output] cases]
       (let [final-state (run-push program
                                   (->> (make-push-state)
-                                       (push-item input :input)
-                                       (push-item "" :output)))
-            printed-result (stack-ref :output 0 final-state)
-            int-result (stack-ref :integer 0 final-state)]
-        (vector printed-result int-result))))))
+                                       (push-item input :input)))
+            result (top-item :string final-state)
+            int-result (top-item :integer final-state)]
+        (vector result int-result))))))
 
 (defn replace-space-with-newline-errors-from-behaviors
   "Takes a list of behaviors across the list of cases and finds the error
@@ -115,16 +114,15 @@
   (let [behavior-pairs (partition 2 behaviors)
         output-pairs (map second cases)]
     (flatten
-     (map (fn [[printed-result int-result] [correct-printed-output correct-int]]
-            (vector
-             (+
-              (levenshtein-distance correct-printed-output printed-result)
-              (if (number? int-result)
-                (abs (- int-result correct-int)) ;distance from correct integer
-                1000))                  ;penalty for no return value
-             ))
-          behavior-pairs
-          output-pairs))))
+      (map (fn [[result int-result] [correct-output correct-int]]
+             (+ (if (vector? result)
+                  (levenshtein-distance (pr-str correct-output) (pr-str result))
+                  1000000)
+                (if (number? int-result)
+                  (abs (- int-result correct-int)) ;distance from correct integer
+                  1000000)))
+           behavior-pairs
+           output-pairs))))
 
 (defn replace-space-with-newline-error-function
   "The error function for Replace Space With Newline. Takes an individual as input,

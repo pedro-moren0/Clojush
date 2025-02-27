@@ -92,8 +92,7 @@
                                                      data-cases)]
                        (let [final-state (run-push (:program individual)
                                                    (->> (make-push-state)
-                                                     (push-item input1 :input)
-                                                     (push-item [] :output)))
+                                                     (push-item input1 :input)))
                              result (top-item :vector_integer final-state)]
                          (when print-outputs
                            (println (format "| Correct output: %s\n| Program output: %s\n" (pr-str correct-output) (pr-str result))))

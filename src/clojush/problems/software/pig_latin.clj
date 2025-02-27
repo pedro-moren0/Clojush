@@ -110,16 +110,16 @@
                                                    data-cases)]
                       (let [final-state (run-push (:program individual)
                                                   (->> (make-push-state)
-                                                       (push-item input :input)
-                                                       (push-item [] :output)))
+                                                       (push-item input :input)))
                             result (top-item :vector_string final-state)]
                         (when print-outputs
                           (println (format "\n| Correct output: %s\n| Program output: %s" (pr-str correct-output) (pr-str result))))
                         ; Record the behavior
                         (swap! behavior conj result)
                         ; Error is Levenshtein distance for printed string
-                        (levenshtein-distance (pr-str correct-output) (pr-str result))
-                        )))]
+                        (if (vector? result)
+                          (levenshtein-distance (pr-str correct-output) (pr-str result))
+                          1000000))))]
        (if (= data-cases :test)
          (assoc individual :test-errors errors)
          (assoc individual :behaviors @behavior :errors errors))))))

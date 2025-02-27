@@ -1,4 +1,3 @@
-;; origami
 ;; syllables.clj
 ;; Tom Helmuth, thelmuth@cs.umass.edu
 ;;
@@ -48,7 +47,7 @@
             'in1
             ;;; end input instructions
             )
-          (registered-for-stacks [:integer :boolean :string :char :exec])))
+          (registered-for-stacks [:exec :integer :boolean :string :char])))
 
 
 ;; A list of data domains for the problem. Each domain is a vector containing
@@ -104,10 +103,9 @@
                            ; Record the behavior
                          (swap! behavior conj result)
                            ; Error is Levenshtein distance and, if ends in an integer, distance from correct integer
-                         (vector
-                          (if (number? result)
+                         (if (number? result)
                             (abs (- correct-output result))
-                            1000000))))))] ;; penalty for no return value
+                            1000000)))))] ;; penalty for no return value
         (if (= data-cases :test)
           (assoc individual :test-errors errors)
           (assoc individual :behaviors @behavior :errors errors))))))

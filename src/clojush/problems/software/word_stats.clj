@@ -96,7 +96,7 @@
             ;;; end constants
             (fn [] (- (lrand-int 201) 100)) ;Integer ERC
             ;;; end ERCs
-            (tag-instruction-erc [:string :char :integer :boolean :exec] 1000)
+            (tag-instruction-erc [:string :vector_string :char :integer :vector_integer :float :vector_float :boolean :exec] 1000)
             (tagged-instruction-erc 1000)
             ;;; end tag ERCs
             'file_readline
@@ -188,44 +188,45 @@
   [train-cases test-cases]
   (fn the-actual-word-stats-error-function
     ([individual]
-      (the-actual-word-stats-error-function individual :train))
+     (the-actual-word-stats-error-function individual :train))
     ([individual data-cases] ;; data-cases should be :train or :test
      (the-actual-word-stats-error-function individual data-cases false))
     ([individual data-cases print-outputs]
-      (let [behavior (atom '())
-            errors (flatten
-                     (doall
-                       (for [[input [correct-output sentences words-per-sentence]] (case data-cases
-                                                                                     :train train-cases
-                                                                                     :test test-cases
-                                                                                     data-cases)]
-                         (let [final-state (run-push (:program individual)
-                                                     (->> (make-push-state)
-                                                       (push-item input :input)
-                                                       (push-item input :input)))
-                               result (top-item :vector_integer final-state)
-                               result-sentences (top-item :integer final-state)
-                               result-sentences-average (top-item :float final-state)]
-                           (when print-outputs
-                             (println (format "\n| Correct output: %s\n| Program output: %s" (pr-str correct-output) (pr-str result)))
-                             (println (format "| Correct number of sentences: %s| Program number: %s" (pr-str sentences) (pr-str result-sentences)))
-                             (println (format "| Correct average words/sentece: %s| Program average: %s" (pr-str words-per-sentence) (pr-str result-sentences-average))))
-                           ; Record the behavior
-                           (swap! behavior conj result)
-                           ; Errors:
-                           ;  1. Levenshtein distance of outputs + abs dist of sentences + abs dist of words average
-                           (vector
-                             (+ (levenshtein-distance (pr-str correct-output) (pr-str result))
-                                (if (number? result-sentences)
-                                  (abs (- result-sentences sentences))
-                                  1000000) ;Penalty
-                                (if (number? result-sentences-average)
-                                  (abs (- result-sentences-average words-per-sentence))
-                                  1000000.0) ;Penalty
-                                ))))))]
-        (if (= data-cases :test)
-          (assoc individual :test-errors errors)
-          (assoc individual :behaviors @behavior :errors errors))))))
+     (let [behavior (atom '())
+           errors (flatten
+                    (doall
+                      (for [[input [correct-output sentences words-per-sentence]] (case data-cases
+                                                                                    :train train-cases
+                                                                                    :test test-cases
+                                                                                    data-cases)]
+                        (let [final-state (run-push (:program individual)
+                                                    (->> (make-push-state)
+                                                         (push-item input :input)
+                                                         (push-item input :input)))
+                              result (top-item :vector_integer final-state)
+                              result-sentences (top-item :integer final-state)
+                              result-sentences-average (top-item :float final-state)]
+                          (when print-outputs
+                            (println (format "\n| Correct output: %s\n| Program output: %s" (pr-str correct-output) (pr-str result)))
+                            (println (format "| Correct number of sentences: %s| Program number: %s" (pr-str sentences) (pr-str result-sentences)))
+                            (println (format "| Correct average words/sentece: %s| Program average: %s" (pr-str words-per-sentence) (pr-str result-sentences-average))))
+                          ; Record the behavior
+                          (swap! behavior conj result)
+                          ; Errors:
+                          ;  1. Levenshtein distance of outputs + abs dist of sentences + abs dist of words average
+                          (+ (if (vector? result)
+                               (levenshtein-distance (pr-str correct-output) (pr-str result))
+                               1000000) ;Penalty
+                             (if (number? result-sentences)
+                               (abs (- result-sentences sentences))
+                               1000000) ;Penalty
+                             (if (number? result-sentences-average)
+                               (abs (- result-sentences-average words-per-sentence))
+                               1000000) ;Penalty
+                             )))))]
+       (if (= data-cases :test)
+         (assoc individual :test-errors errors)
+         (assoc individual :behaviors @behavior :errors errors))))))
 
 (defn get-word-stats-train-and-test
   "Returns the train and test cases."

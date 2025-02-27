@@ -24,15 +24,15 @@
 ; Atom generators
 (def grade-atom-generators
   (concat (list
-            "A"
-            "B"
-            "C"
-            "D"
-            "F"
+            \A
+            \B
+            \C
+            \D
+            \F
             ;;; end constants
             (fn [] (lrand-int 101)) ;Integer ERC [0,100]
             ;;; end ERCs
-            (tag-instruction-erc [:exec :integer :string :boolean] 1000)
+            (tag-instruction-erc [:exec :integer :char :boolean] 1000)
             (tagged-instruction-erc 1000)
             ;;; end tagERCs
             'in1
@@ -42,7 +42,7 @@
             'in5
             ;;; end input instructions
             )
-          (registered-for-stacks [:integer :boolean :string :exec :print])))
+          (registered-for-stacks [:integer :boolean :char :exec])))
 
 ;; A list of data domains for the problem. Each domain is a vector containing
 ;; a "set" of inputs and two integers representing how many cases from the set
@@ -107,13 +107,13 @@
    [[input1 input2 input3 input4 input5] output]."
   [inputs]
   (map #(vector %
-                (str (let [score (last %)]
+                (let [score (last %)]
                        (cond
                          (>= score (first %)) \A
                          (>= score (second %)) \B
                          (>= score (nth % 2)) \C
                          (>= score (nth % 3)) \D
-                         :else \F))))
+                         :else \F)))
        inputs))
 
 (defn make-grade-error-function-from-cases
@@ -137,17 +137,16 @@
                                                        (push-item input4 :input)
                                                        (push-item input3 :input)
                                                        (push-item input2 :input)
-                                                       (push-item input1 :input)
-                                                       (push-item "" :output)))
-                               printed-result (stack-ref :output 0 final-state)]
+                                                       (push-item input1 :input)))
+                               result (top-item :char final-state)]
                            (when print-outputs
-                             (println (format "Correct output: %-19s | Program output: %-19s" (pr-str correct-output) (pr-str printed-result))))
+                             (println (format "Correct output: %-19s | Program output: %-19s" (pr-str correct-output) (pr-str result))))
                            ; Record the behavior
-                           (swap! behavior conj printed-result)
-                           ; Error is Levenshtein distance and, if correct format, distance from correct letter grade character
-                           (vector
-                             (levenshtein-distance (pr-str correct-output) (pr-str printed-result))
-                             )))))]
+                           (swap! behavior conj result)
+                           ; Error is char error
+                           (if (char? result)
+                               (abs (- (int correct-output) (int result)))
+                               1000000)))))] ;; no char penalty
         (if (= data-cases :test)
           (assoc individual :test-errors errors)
           (assoc individual :behaviors @behavior :errors errors))))))
